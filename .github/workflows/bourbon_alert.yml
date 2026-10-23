@@ -38,6 +38,7 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD || vars.GMAIL_APP_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL || vars.NOTIFY_EMAIL }}
           NOTIFY_SMS_GATEWAY: ${{ secrets.NOTIFY_SMS_GATEWAY || vars.NOTIFY_SMS_GATEWAY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC || vars.NTFY_TOPIC }}
           TARGET_BOURBONS: ${{ secrets.TARGET_BOURBONS || vars.TARGET_BOURBONS }}
         run: |
           ARGS=""

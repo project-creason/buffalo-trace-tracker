@@ -4,13 +4,14 @@ Buffalo Trace Distillery Product Availability Checker & Notifier.
 
 Fetches https://www.buffalotracedistillery.com/visit-us/product-availability/,
 extracts the in-stock status of all bourbons (specifically watching allocated
-bottles like Blanton's, E.H. Taylor, Eagle Rare, and Weller), and sends an
-Email and/or SMS alert via Gmail SMTP + Carrier Email-to-SMS Gateway when
-target bottles are available.
+bottles like Blanton's, E.H. Taylor, Eagle Rare, and Weller), and sends:
+  - Instant mobile push notifications via ntfy.sh (free iOS/Android app)
+  - Email alerts via Gmail SMTP
+  - Carrier Email-to-SMS gateway alerts (for carriers that still support it)
 """
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -258,66 +259,127 @@ def build_sms_message(
     msg = EmailMessage()
     msg["From"] = sender
     msg["To"] = ", ".join(sms_recipients)
-    # Empty/short subject avoids taking up character budget on SMS gateways
     msg["Subject"] = "BT Alert"
     msg.set_content(body)
     return msg
+
+
+def send_ntfy_push(
+    topics: list[str],
+    matched_available: list[dict],
+    all_products: list[dict],
+) -> None:
+    """Send an instant mobile push notification via ntfy.sh."""
+    date_str = datetime.now().strftime("%b %d")
+    target_names = ", ".join(p["name"] for p in matched_available)
+
+    rotating_lines = []
+    for p in all_products:
+        if p["category"] == "Rotating Offerings":
+            icon = "✅" if p["in_stock"] else "❌"
+            rotating_lines.append(f"{icon} {p['name']}")
+
+    body_lines = [f"Available today: {target_names}"]
+    if rotating_lines:
+        body_lines.append("")
+        body_lines.append("Rotating Lineup:")
+        body_lines.extend(rotating_lines)
+
+    payload = "\n".join(body_lines).encode("utf-8")
+
+    for topic in topics:
+        clean_topic = topic.strip().lstrip("/")
+        if not clean_topic:
+            continue
+        ntfy_url = (
+            clean_topic
+            if clean_topic.startswith("http")
+            else f"https://ntfy.sh/{clean_topic}"
+        )
+        req = urllib.request.Request(
+            ntfy_url,
+            data=payload,
+            method="POST",
+            headers={
+                "Title": f"Buffalo Trace Alert ({date_str})",
+                "Priority": "high",
+                "Tags": "tumbler_glass,white_check_mark",
+                "Click": URL,
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp.read()
+        print(f"Sent ntfy.sh mobile push notification to topic: {clean_topic}")
 
 
 def send_notifications(
     matched_available: list[dict],
     all_products: list[dict],
 ) -> None:
-    """Send Email and/or SMS alerts using Gmail SMTP credentials from env vars."""
+    """Send ntfy.sh mobile push, Email, and/or SMS alerts based on configured env vars."""
     smtp_user = os.environ.get("GMAIL_USER", "").strip()
     smtp_pass = os.environ.get("GMAIL_APP_PASSWORD", "").strip()
     email_to_raw = os.environ.get("NOTIFY_EMAIL", "").strip()
     sms_to_raw = os.environ.get("NOTIFY_SMS_GATEWAY", "").strip()
-
-    if not smtp_user or not smtp_pass:
-        print(
-            "ERROR: GMAIL_USER and GMAIL_APP_PASSWORD environment variables are required to send alerts.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    ntfy_topic_raw = os.environ.get("NTFY_TOPIC", "").strip()
 
     email_recipients = [e.strip() for e in email_to_raw.split(",") if e.strip()]
     sms_recipients = [s.strip() for s in sms_to_raw.split(",") if s.strip()]
+    ntfy_topics = [t.strip() for t in ntfy_topic_raw.split(",") if t.strip()]
 
-    if not email_recipients and not sms_recipients:
+    sent_any = False
+
+    # 1. Send ntfy.sh push notification if NTFY_TOPIC is configured
+    if ntfy_topics:
+        send_ntfy_push(ntfy_topics, matched_available, all_products)
+        sent_any = True
+
+    # 2. Send Email / SMS via Gmail SMTP if configured
+    if email_recipients or sms_recipients:
+        if not smtp_user or not smtp_pass:
+            print(
+                "WARNING: NOTIFY_EMAIL / NOTIFY_SMS_GATEWAY set, but GMAIL_USER or GMAIL_APP_PASSWORD is missing.",
+                file=sys.stderr,
+            )
+            if not sent_any:
+                sys.exit(1)
+        else:
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+                server.login(smtp_user, smtp_pass)
+
+                if email_recipients:
+                    email_msg = build_email_message(
+                        smtp_user, email_recipients, matched_available, all_products
+                    )
+                    server.sendmail(smtp_user, email_recipients, email_msg.as_string())
+                    print(f"Sent email alert to: {', '.join(email_recipients)}")
+                    sent_any = True
+
+                if sms_recipients:
+                    sms_msg = build_sms_message(
+                        smtp_user, sms_recipients, matched_available
+                    )
+                    server.send_message(sms_msg)
+                    print(f"Sent SMS gateway alert to: {', '.join(sms_recipients)}")
+                    sent_any = True
+
+    if not sent_any:
         print(
-            "ERROR: Set at least one of NOTIFY_EMAIL or NOTIFY_SMS_GATEWAY.",
+            "ERROR: No notification destination configured. Set NTFY_TOPIC, NOTIFY_EMAIL, or NOTIFY_SMS_GATEWAY.",
             file=sys.stderr,
         )
         sys.exit(1)
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
-        server.login(smtp_user, smtp_pass)
-
-        if email_recipients:
-            email_msg = build_email_message(
-                smtp_user, email_recipients, matched_available, all_products
-            )
-            server.sendmail(smtp_user, email_recipients, email_msg.as_string())
-            print(f"Sent email alert to: {', '.join(email_recipients)}")
-
-        if sms_recipients:
-            sms_msg = build_sms_message(
-                smtp_user, sms_recipients, matched_available
-            )
-            server.send_message(sms_msg)
-            print(f"Sent SMS gateway alert to: {', '.join(sms_recipients)}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Check Buffalo Trace product availability and send Email/SMS alerts."
+        description="Check Buffalo Trace product availability and send mobile/email alerts."
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Fetch and print availability without sending Email/SMS notifications.",
+        help="Fetch and print availability without sending notifications.",
     )
     parser.add_argument(
         "--force-notify",
@@ -363,7 +425,7 @@ def main() -> None:
     )
 
     if args.dry_run:
-        print("\n--dry-run enabled; skipping Email/SMS send.")
+        print("\n--dry-run enabled; skipping notification send.")
         return
 
     send_notifications(matched_available, products)
