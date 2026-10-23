@@ -511,11 +511,19 @@ def main() -> None:
     print(f"Current Eastern Time: {now_et.strftime('%A, %Y-%m-%d %I:%M:%S %p %Z')}")
 
     is_manual_run = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+    state = load_state(args.state_file)
+    already_alerted_today = state.get("last_alert_date") == now_et.strftime("%Y-%m-%d")
+
     if not is_manual_run and not args.force_notify:
         in_window, window_reason = is_within_schedule_window(now_et)
         print(f"Schedule check: {window_reason}")
-        if not in_window:
-            print("Skipping check because current Eastern Time is outside the active window.")
+        if not in_window and already_alerted_today:
+            print("Skipping check because current Eastern Time is outside the active window and today's alert was already sent.")
+            return
+        elif not in_window and not already_alerted_today and now_et.hour >= 9:
+            print("GitHub cron ran after the target window, but no alert has been sent yet today — proceeding with check!")
+        elif not in_window:
+            print("Skipping pre-7:45 AM ET check.")
             return
 
     print(f"Fetching {URL} ...")
