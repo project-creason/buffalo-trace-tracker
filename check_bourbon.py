@@ -158,7 +158,9 @@ def build_email_message(
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = sender
-    msg["To"] = ", ".join(recipients)
+    # Set To: header to the sender only so all NOTIFY_EMAIL recipients are BCC'd
+    # and cannot see each other's email addresses.
+    msg["To"] = sender
 
     # Plain-text body
     lines = [
