@@ -1,6 +1,23 @@
 {
-  "last_alert_date": "",
-  "last_alert_timestamp_et": "",
-  "available_targets": [],
-  "all_available": []
+  "last_alert_date": "2026-10-23",
+  "last_alert_timestamp_et": "2026-10-23 05:05:14 PM EDT",
+  "available_targets": [
+    "Weller Special Reserve",
+    "Weller Antique 107",
+    "Blanton\u2019s Single Barrel",
+    "E.H. Taylor Small Batch"
+  ],
+  "all_available": [
+    "Buffalo Trace Bourbon",
+    "Traveller Whiskey",
+    "Sazerac Rye Whiskey",
+    "Weller Special Reserve",
+    "Weller Antique 107",
+    "Blanton\u2019s Single Barrel",
+    "E.H. Taylor Small Batch",
+    "Buffalo Trace Bourbon Cream",
+    "Wheatley Vodka",
+    "Century Vodka",
+    "HDW CLIX  Vodka"
+  ]
 }
