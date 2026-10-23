@@ -173,6 +173,28 @@ def save_state(state_file: str, state: dict) -> None:
         f.write("\n")
 
 
+def is_within_schedule_window(now_et: datetime) -> tuple[bool, str]:
+    """
+    Check if current Eastern Time falls within the configured polling window:
+      - Monday - Saturday: 7:45 AM - 9:15 AM ET (with buffer up to 9:25 AM for cron delay)
+      - Sunday:            7:45 AM - 11:30 AM ET (with buffer up to 11:40 AM for cron delay)
+    """
+    minutes_since_midnight = now_et.hour * 60 + now_et.minute
+    start_minutes = 7 * 60 + 40  # 7:40 AM ET (5-min early buffer for 7:45 AM cron)
+
+    is_sunday = now_et.weekday() == 6
+    if is_sunday:
+        end_minutes = 11 * 60 + 40  # 11:40 AM ET (10-min buffer for 11:30 AM cron)
+        window_desc = "Sunday 7:45 AM - 11:30 AM ET"
+    else:
+        end_minutes = 9 * 60 + 25  # 9:25 AM ET (10-min buffer for 9:15 AM cron)
+        window_desc = "Mon-Sat 7:45 AM - 9:15 AM ET"
+
+    if start_minutes <= minutes_since_midnight <= end_minutes:
+        return True, f"Inside polling window ({window_desc})"
+    return False, f"Outside polling window ({window_desc})"
+
+
 def should_send_alert(
     state: dict,
     current_targets: list[str],
@@ -184,8 +206,9 @@ def should_send_alert(
     Determine whether to send an alert right now:
       1. Always send on manual workflow_dispatch runs or --force-notify.
       2. Immediately send if the in-stock target bottle list changed since the last alert.
-      3. Once it is >= 9:00 AM ET (gift shop open), send today's daily alert if we haven't
-         sent one yet for today's date (even if today's bottles happen to match yesterday's).
+      3. Once the Gift Shop opens (9:00 AM ET Mon-Sat, 11:00 AM ET Sunday), send today's
+         daily alert if we haven't sent one yet for today's date (even if today's bottles
+         happen to match yesterday's).
       4. Otherwise skip (prevents duplicate alerts every 15 minutes).
     """
     if force_notify:
@@ -209,17 +232,18 @@ def should_send_alert(
         )
 
     # It's a new day and the lineup is identical to yesterday's last alert.
-    # Wait until >= 9:00 AM ET (when Buffalo Trace Gift Shop opens) to confirm
+    # Wait until the Gift Shop opens (9:00 AM ET Mon-Sat, 11:00 AM ET Sunday) to confirm
     # it's not just yesterday's un-updated page from earlier in the morning.
-    if now_et.hour >= 9:
+    open_hour = 11 if now_et.weekday() == 6 else 9
+    if now_et.hour >= open_hour:
         return (
             True,
-            f"First confirmed post-9AM ET daily alert for {today_str} (same lineup as yesterday)",
+            f"First confirmed post-{open_hour}AM ET daily alert for {today_str} (same lineup as yesterday)",
         )
 
     return (
         False,
-        f"Pre-9AM ET check ({now_et.strftime('%I:%M %p ET')}): lineup unchanged from yesterday, waiting for update or 9:00 AM ET confirmation.",
+        f"Pre-{open_hour}AM ET check ({now_et.strftime('%I:%M %p ET')}): lineup unchanged from yesterday, waiting for update or {open_hour}:00 AM ET Gift Shop open confirmation.",
     )
 
 
@@ -484,7 +508,16 @@ def main() -> None:
     args = parser.parse_args()
 
     now_et = datetime.now(EASTERN_TZ)
-    print(f"Current Eastern Time: {now_et.strftime('%Y-%m-%d %I:%M:%S %p %Z')}")
+    print(f"Current Eastern Time: {now_et.strftime('%A, %Y-%m-%d %I:%M:%S %p %Z')}")
+
+    is_manual_run = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+    if not is_manual_run and not args.force_notify:
+        in_window, window_reason = is_within_schedule_window(now_et)
+        print(f"Schedule check: {window_reason}")
+        if not in_window:
+            print("Skipping check because current Eastern Time is outside the active window.")
+            return
+
     print(f"Fetching {URL} ...")
 
     page_html = fetch_page(URL)

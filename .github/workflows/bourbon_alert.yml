@@ -2,9 +2,14 @@ name: Buffalo Trace Daily Bourbon Alert
 
 on:
   schedule:
-    # Polls every 15 minutes during morning release hours:
-    # 11:00 - 16:45 UTC = 7:00 AM - 12:45 PM EDT (or 6:00 AM - 11:45 AM EST)
-    - cron: "*/15 11-16 * * *"
+    # Monday - Saturday (7:45 AM - 9:15 AM Eastern Time, covering both EDT and EST)
+    - cron: "45 11 * * 1-6"
+    - cron: "*/15 12-13 * * 1-6"
+    - cron: "0,15 14 * * 1-6"
+    # Sunday (7:45 AM - 11:30 AM Eastern Time, covering both EDT and EST)
+    - cron: "45 11 * * 0"
+    - cron: "*/15 12-15 * * 0"
+    - cron: "0,15,30 16 * * 0"
   workflow_dispatch:
     inputs:
       force_notify:
