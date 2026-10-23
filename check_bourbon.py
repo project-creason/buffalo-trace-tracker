@@ -6,8 +6,13 @@ Fetches https://www.buffalotracedistillery.com/visit-us/product-availability/,
 extracts the in-stock status of all bourbons (specifically watching allocated
 bottles like Blanton's, E.H. Taylor, Eagle Rare, and Weller), and sends:
   - Instant mobile push notifications via ntfy.sh (free iOS/Android app)
-  - Email alerts via Gmail SMTP
+  - Email alerts via Gmail SMTP (with recipients hidden in BCC)
   - Carrier Email-to-SMS gateway alerts (for carriers that still support it)
+
+Supports smart change-detection via a state file (last_state.json) so it can
+poll every 10-15 minutes during morning release hours and alert you the exact
+moment the lineup changes (or once the gift shop opens at 9:00 AM ET) without
+sending duplicate alerts.
 """
 
 import argparse
@@ -16,14 +21,17 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import html as html_lib
+import json
 import os
 import re
 import smtplib
 import ssl
 import sys
 import urllib.request
+from zoneinfo import ZoneInfo
 
 URL = "https://www.buffalotracedistillery.com/visit-us/product-availability/"
+EASTERN_TZ = ZoneInfo("America/New_York")
 
 DEFAULT_TARGETS = [
     "E.H. Taylor",
@@ -144,14 +152,86 @@ def matches_target(product_name: str, targets: list[str]) -> bool:
     return any(target.lower() in lower_name for target in targets)
 
 
+def load_state(state_file: str) -> dict:
+    """Load previous alert state from JSON file if it exists."""
+    if not state_file or not os.path.exists(state_file):
+        return {}
+    try:
+        with open(state_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        print(f"Warning: could not read state file {state_file}: {exc}")
+        return {}
+
+
+def save_state(state_file: str, state: dict) -> None:
+    """Save current alert state to JSON file."""
+    if not state_file:
+        return
+    with open(state_file, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+        f.write("\n")
+
+
+def should_send_alert(
+    state: dict,
+    current_targets: list[str],
+    now_et: datetime,
+    is_manual_run: bool,
+    force_notify: bool,
+) -> tuple[bool, str]:
+    """
+    Determine whether to send an alert right now:
+      1. Always send on manual workflow_dispatch runs or --force-notify.
+      2. Immediately send if the in-stock target bottle list changed since the last alert.
+      3. Once it is >= 9:00 AM ET (gift shop open), send today's daily alert if we haven't
+         sent one yet for today's date (even if today's bottles happen to match yesterday's).
+      4. Otherwise skip (prevents duplicate alerts every 15 minutes).
+    """
+    if force_notify:
+        return True, "Force notify enabled"
+    if is_manual_run:
+        return True, "Manual workflow run triggered"
+
+    today_str = now_et.strftime("%Y-%m-%d")
+    last_date = state.get("last_alert_date", "")
+    last_targets = state.get("available_targets", [])
+
+    # Did the available target bottles change compared to the last alert?
+    if current_targets != last_targets:
+        return True, f"Lineup changed from {last_targets or 'none'} to {current_targets}"
+
+    # If we already alerted for this exact lineup today, don't spam
+    if last_date == today_str:
+        return (
+            False,
+            f"Already alerted today ({today_str}) for {', '.join(current_targets)}; no change.",
+        )
+
+    # It's a new day and the lineup is identical to yesterday's last alert.
+    # Wait until >= 9:00 AM ET (when Buffalo Trace Gift Shop opens) to confirm
+    # it's not just yesterday's un-updated page from earlier in the morning.
+    if now_et.hour >= 9:
+        return (
+            True,
+            f"First confirmed post-9AM ET daily alert for {today_str} (same lineup as yesterday)",
+        )
+
+    return (
+        False,
+        f"Pre-9AM ET check ({now_et.strftime('%I:%M %p ET')}): lineup unchanged from yesterday, waiting for update or 9:00 AM ET confirmation.",
+    )
+
+
 def build_email_message(
     sender: str,
     recipients: list[str],
     matched_available: list[dict],
     all_products: list[dict],
+    now_et: datetime,
 ) -> MIMEMultipart:
     """Build a rich HTML + plain-text email summarizing today's bourbon availability."""
-    date_str = datetime.now().strftime("%b %d, %Y")
+    date_str = now_et.strftime("%b %d, %Y")
     names_short = ", ".join(p["name"] for p in matched_available)
     subject = f"🥃 Buffalo Trace Alert ({date_str}): {names_short}"
 
@@ -270,9 +350,10 @@ def send_ntfy_push(
     topics: list[str],
     matched_available: list[dict],
     all_products: list[dict],
+    now_et: datetime,
 ) -> None:
     """Send an instant mobile push notification via ntfy.sh."""
-    date_str = datetime.now().strftime("%b %d")
+    date_str = now_et.strftime("%b %d")
     target_names = ", ".join(p["name"] for p in matched_available)
 
     rotating_lines = []
@@ -317,6 +398,7 @@ def send_ntfy_push(
 def send_notifications(
     matched_available: list[dict],
     all_products: list[dict],
+    now_et: datetime,
 ) -> None:
     """Send ntfy.sh mobile push, Email, and/or SMS alerts based on configured env vars."""
     smtp_user = os.environ.get("GMAIL_USER", "").strip()
@@ -333,7 +415,7 @@ def send_notifications(
 
     # 1. Send ntfy.sh push notification if NTFY_TOPIC is configured
     if ntfy_topics:
-        send_ntfy_push(ntfy_topics, matched_available, all_products)
+        send_ntfy_push(ntfy_topics, matched_available, all_products, now_et)
         sent_any = True
 
     # 2. Send Email / SMS via Gmail SMTP if configured
@@ -352,10 +434,16 @@ def send_notifications(
 
                 if email_recipients:
                     email_msg = build_email_message(
-                        smtp_user, email_recipients, matched_available, all_products
+                        smtp_user,
+                        email_recipients,
+                        matched_available,
+                        all_products,
+                        now_et,
                     )
                     server.sendmail(smtp_user, email_recipients, email_msg.as_string())
-                    print(f"Sent email alert to: {', '.join(email_recipients)}")
+                    print(
+                        f"Sent BCC email alert to {len(email_recipients)} recipient(s)."
+                    )
                     sent_any = True
 
                 if sms_recipients:
@@ -386,11 +474,19 @@ def main() -> None:
     parser.add_argument(
         "--force-notify",
         action="store_true",
-        help="Send notification even if only standard bottles are available (useful for testing).",
+        help="Send notification even if lineup hasn't changed or only standard bottles are available.",
+    )
+    parser.add_argument(
+        "--state-file",
+        default="last_state.json",
+        help="Path to JSON file tracking last alerted lineup to prevent duplicate notifications.",
     )
     args = parser.parse_args()
 
+    now_et = datetime.now(EASTERN_TZ)
+    print(f"Current Eastern Time: {now_et.strftime('%Y-%m-%d %I:%M:%S %p %Z')}")
     print(f"Fetching {URL} ...")
+
     page_html = fetch_page(URL)
     products = parse_availability(page_html)
 
@@ -418,19 +514,41 @@ def main() -> None:
         matched_available = [p for p in products if p["in_stock"]]
 
     if not matched_available:
-        print("\nNo target allocated bottles are in stock today. No alert sent.")
+        print("\nNo target allocated bottles are in stock right now. No alert sent.")
         return
 
-    print(
-        "\nTarget bottles AVAILABLE today: "
-        + ", ".join(p["name"] for p in matched_available)
+    current_targets = [p["name"] for p in matched_available]
+    print("\nTarget bottles AVAILABLE: " + ", ".join(current_targets))
+
+    is_manual_run = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+    state = load_state(args.state_file)
+
+    should_send, reason = should_send_alert(
+        state=state,
+        current_targets=current_targets,
+        now_et=now_et,
+        is_manual_run=is_manual_run,
+        force_notify=args.force_notify,
     )
+    print(f"Alert decision: {should_send} ({reason})")
+
+    if not should_send:
+        return
 
     if args.dry_run:
-        print("\n--dry-run enabled; skipping notification send.")
+        print("\n--dry-run enabled; skipping notification send and state update.")
         return
 
-    send_notifications(matched_available, products)
+    send_notifications(matched_available, products, now_et)
+
+    new_state = {
+        "last_alert_date": now_et.strftime("%Y-%m-%d"),
+        "last_alert_timestamp_et": now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z"),
+        "available_targets": current_targets,
+        "all_available": [p["name"] for p in products if p["in_stock"]],
+    }
+    save_state(args.state_file, new_state)
+    print(f"Updated state file: {args.state_file}")
 
 
 if __name__ == "__main__":
