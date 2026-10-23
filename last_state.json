@@ -1,4 +1,5 @@
 {
+  "last_checked_et": "2026-10-23 05:05:14 PM EDT",
   "last_alert_date": "2026-10-23",
   "last_alert_timestamp_et": "2026-10-23 05:05:14 PM EDT",
   "available_targets": [
@@ -19,5 +20,67 @@
     "Wheatley Vodka",
     "Century Vodka",
     "HDW CLIX  Vodka"
+  ],
+  "products": [
+    {
+      "name": "Buffalo Trace Bourbon",
+      "in_stock": true,
+      "category": "Daily Offerings"
+    },
+    {
+      "name": "Traveller Whiskey",
+      "in_stock": true,
+      "category": "Daily Offerings"
+    },
+    {
+      "name": "Sazerac Rye Whiskey",
+      "in_stock": true,
+      "category": "Daily Offerings"
+    },
+    {
+      "name": "Weller Special Reserve",
+      "in_stock": true,
+      "category": "Daily Offerings"
+    },
+    {
+      "name": "E.H. Taylor Small Batch",
+      "in_stock": true,
+      "category": "Rotating Offerings"
+    },
+    {
+      "name": "Blanton\u2019s Single Barrel",
+      "in_stock": true,
+      "category": "Rotating Offerings"
+    },
+    {
+      "name": "Weller Antique 107",
+      "in_stock": true,
+      "category": "Rotating Offerings"
+    },
+    {
+      "name": "Eagle Rare 10-Year",
+      "in_stock": false,
+      "category": "Rotating Offerings"
+    },
+    {
+      "name": "Buffalo Trace Bourbon Cream",
+      "in_stock": true,
+      "category": "Additional Offerings"
+    },
+    {
+      "name": "Wheatley Vodka",
+      "in_stock": true,
+      "category": "Additional Offerings"
+    },
+    {
+      "name": "Century Vodka",
+      "in_stock": true,
+      "category": "Additional Offerings"
+    },
+    {
+      "name": "HDW CLIX  Vodka",
+      "in_stock": true,
+      "category": "Additional Offerings"
+    }
   ]
 }

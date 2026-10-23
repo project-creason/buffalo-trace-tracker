@@ -574,6 +574,11 @@ def main() -> None:
     print(f"Alert decision: {should_send} ({reason})")
 
     if not should_send:
+        if not args.dry_run and state.get("products") != products:
+            state["last_checked_et"] = now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z")
+            state["products"] = products
+            save_state(args.state_file, state)
+            print(f"Updated product snapshot in {args.state_file}")
         return
 
     if args.dry_run:
@@ -583,10 +588,12 @@ def main() -> None:
     send_notifications(matched_available, products, now_et)
 
     new_state = {
+        "last_checked_et": now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z"),
         "last_alert_date": now_et.strftime("%Y-%m-%d"),
         "last_alert_timestamp_et": now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z"),
         "available_targets": current_targets,
         "all_available": [p["name"] for p in products if p["in_stock"]],
+        "products": products,
     }
     save_state(args.state_file, new_state)
     print(f"Updated state file: {args.state_file}")
