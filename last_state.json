@@ -1,7 +1,7 @@
 {
-  "last_checked_et": "2026-10-23 05:05:14 PM EDT",
-  "last_alert_date": "2026-10-23",
-  "last_alert_timestamp_et": "2026-10-23 05:05:14 PM EDT",
+  "last_checked_et": "2026-10-24 10:54:47 AM EDT",
+  "last_alert_date": "2026-10-24",
+  "last_alert_timestamp_et": "2026-10-24 10:54:47 AM EDT",
   "available_targets": [
     "Weller Special Reserve",
     "Weller Antique 107",
@@ -43,7 +43,7 @@
       "category": "Daily Offerings"
     },
     {
-      "name": "E.H. Taylor Small Batch",
+      "name": "Weller Antique 107",
       "in_stock": true,
       "category": "Rotating Offerings"
     },
@@ -53,7 +53,7 @@
       "category": "Rotating Offerings"
     },
     {
-      "name": "Weller Antique 107",
+      "name": "E.H. Taylor Small Batch",
       "in_stock": true,
       "category": "Rotating Offerings"
     },
