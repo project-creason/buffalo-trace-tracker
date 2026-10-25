@@ -2,14 +2,13 @@ name: Buffalo Trace Daily Bourbon Alert
 
 on:
   schedule:
-    # Monday - Saturday (7:45 AM - 9:15 AM Eastern Time, covering both EDT and EST)
-    # Offset by 2 minutes off the quarter-hour to avoid GitHub Actions global :00/:15/:30/:45 queue congestion
-    - cron: "43 11 * * 1-6"
-    - cron: "2,17,32,47 12-13 * * 1-6"
+    # Monday - Saturday (starts earlier in UTC to account for GitHub cron queue lag, covering 6:30 AM - 9:15 AM ET)
+    - cron: "17,47 9-10 * * 1-6"
+    - cron: "2,17,32,47 11-13 * * 1-6"
     - cron: "2,17 14 * * 1-6"
-    # Sunday (7:45 AM - 11:30 AM Eastern Time, covering both EDT and EST)
-    - cron: "43 11 * * 0"
-    - cron: "2,17,32,47 12-15 * * 0"
+    # Sunday (starts at 6:30 AM ET ahead of Gift Shop opening and polls through 11:30 AM ET)
+    - cron: "17,47 9-10 * * 0"
+    - cron: "2,17,32,47 11-15 * * 0"
     - cron: "2,17,32 16 * * 0"
   workflow_dispatch:
     inputs:

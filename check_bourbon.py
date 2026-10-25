@@ -176,19 +176,19 @@ def save_state(state_file: str, state: dict) -> None:
 def is_within_schedule_window(now_et: datetime) -> tuple[bool, str]:
     """
     Check if current Eastern Time falls within the configured polling window:
-      - Monday - Saturday: 7:45 AM - 9:15 AM ET (with buffer up to 9:25 AM for cron delay)
-      - Sunday:            7:45 AM - 11:30 AM ET (with buffer up to 11:40 AM for cron delay)
+      - Monday - Saturday: 6:30 AM - 9:15 AM ET (with buffer up to 9:25 AM for cron delay)
+      - Sunday:            6:30 AM - 11:30 AM ET (with buffer up to 11:40 AM for cron delay)
     """
     minutes_since_midnight = now_et.hour * 60 + now_et.minute
-    start_minutes = 7 * 60 + 40  # 7:40 AM ET (5-min early buffer for 7:45 AM cron)
+    start_minutes = 6 * 60 + 30  # 6:30 AM ET all 7 days
 
     is_sunday = now_et.weekday() == 6
     if is_sunday:
         end_minutes = 11 * 60 + 40  # 11:40 AM ET (10-min buffer for 11:30 AM cron)
-        window_desc = "Sunday 7:45 AM - 11:30 AM ET"
+        window_desc = "Sunday 6:30 AM - 11:30 AM ET"
     else:
         end_minutes = 9 * 60 + 25  # 9:25 AM ET (10-min buffer for 9:15 AM cron)
-        window_desc = "Mon-Sat 7:45 AM - 9:15 AM ET"
+        window_desc = "Mon-Sat 6:30 AM - 9:15 AM ET"
 
     if start_minutes <= minutes_since_midnight <= end_minutes:
         return True, f"Inside polling window ({window_desc})"
@@ -206,9 +206,9 @@ def should_send_alert(
     Determine whether to send an alert right now:
       1. Always send on manual workflow_dispatch runs or --force-notify.
       2. Immediately send if the in-stock target bottle list changed since the last alert.
-      3. Once the Gift Shop opens (9:00 AM ET Mon-Sat, 11:00 AM ET Sunday), send today's
-         daily alert if we haven't sent one yet for today's date (even if today's bottles
-         happen to match yesterday's).
+      3. Once it is >= 8:30 AM ET (all 7 days, since Sunday's page is also updated ahead
+         of the 11:00 AM Gift Shop opening), send today's daily alert if we haven't sent
+         one yet for today's date (even if today's bottles happen to match yesterday's).
       4. Otherwise skip (prevents duplicate alerts every 15 minutes).
     """
     if force_notify:
@@ -232,18 +232,17 @@ def should_send_alert(
         )
 
     # It's a new day and the lineup is identical to yesterday's last alert.
-    # Wait until the Gift Shop opens (9:00 AM ET Mon-Sat, 11:00 AM ET Sunday) to confirm
-    # it's not just yesterday's un-updated page from earlier in the morning.
-    open_hour = 11 if now_et.weekday() == 6 else 9
-    if now_et.hour >= open_hour:
+    # Confirm at 8:30 AM ET (all 7 days, including Sunday) so morning alerts aren't held until 11 AM.
+    minutes_since_midnight = now_et.hour * 60 + now_et.minute
+    if minutes_since_midnight >= (8 * 60 + 30):
         return (
             True,
-            f"First confirmed post-{open_hour}AM ET daily alert for {today_str} (same lineup as yesterday)",
+            f"First confirmed post-8:30AM ET daily alert for {today_str} (same lineup as yesterday)",
         )
 
     return (
         False,
-        f"Pre-{open_hour}AM ET check ({now_et.strftime('%I:%M %p ET')}): lineup unchanged from yesterday, waiting for update or {open_hour}:00 AM ET Gift Shop open confirmation.",
+        f"Pre-8:30AM ET check ({now_et.strftime('%I:%M %p ET')}): lineup unchanged from yesterday, waiting for update or 8:30 AM ET confirmation.",
     )
 
 
@@ -520,10 +519,10 @@ def main() -> None:
         if not in_window and already_alerted_today:
             print("Skipping check because current Eastern Time is outside the active window and today's alert was already sent.")
             return
-        elif not in_window and not already_alerted_today and now_et.hour >= 9:
+        elif not in_window and not already_alerted_today and now_et.hour >= 8:
             print("GitHub cron ran after the target window, but no alert has been sent yet today — proceeding with check!")
         elif not in_window:
-            print("Skipping pre-7:45 AM ET check.")
+            print("Skipping pre-6:30 AM ET check.")
             return
 
     print(f"Fetching {URL} ...")
