@@ -22,6 +22,8 @@ on:
         required: false
         default: false
         type: boolean
+  repository_dispatch:
+    types: [check_bourbon]
 
 permissions:
   contents: write
