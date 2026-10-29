@@ -176,19 +176,12 @@ def save_state(state_file: str, state: dict) -> None:
 def is_within_schedule_window(now_et: datetime) -> tuple[bool, str]:
     """
     Check if current Eastern Time falls within the configured polling window:
-      - Monday - Saturday: 6:30 AM - 9:15 AM ET (with buffer up to 9:25 AM for cron delay)
-      - Sunday:            6:30 AM - 11:30 AM ET (with buffer up to 11:40 AM for cron delay)
+      - All days (Mon - Sun): 6:30 AM - 11:30 AM ET (with buffer up to 11:40 AM)
     """
     minutes_since_midnight = now_et.hour * 60 + now_et.minute
-    start_minutes = 6 * 60 + 30  # 6:30 AM ET all 7 days
-
-    is_sunday = now_et.weekday() == 6
-    if is_sunday:
-        end_minutes = 11 * 60 + 40  # 11:40 AM ET (10-min buffer for 11:30 AM cron)
-        window_desc = "Sunday 6:30 AM - 11:30 AM ET"
-    else:
-        end_minutes = 9 * 60 + 25  # 9:25 AM ET (10-min buffer for 9:15 AM cron)
-        window_desc = "Mon-Sat 6:30 AM - 9:15 AM ET"
+    start_minutes = 6 * 60 + 30  # 6:30 AM ET
+    end_minutes = 11 * 60 + 40    # 11:40 AM ET
+    window_desc = "All days 6:30 AM - 11:30 AM ET"
 
     if start_minutes <= minutes_since_midnight <= end_minutes:
         return True, f"Inside polling window ({window_desc})"
