@@ -1,12 +1,13 @@
 {
-  "last_checked_et": "2026-11-01 08:30:17 AM EST",
+  "last_checked_et": "2026-11-01 09:30:18 AM EST",
   "last_alert_date": "2026-11-01",
-  "last_alert_timestamp_et": "2026-11-01 08:30:17 AM EST",
+  "last_alert_timestamp_et": "2026-11-01 09:30:18 AM EST",
   "available_targets": [
     "Weller Special Reserve",
     "Blanton\u2019s Single Barrel",
     "E.H. Taylor Small Batch",
-    "Weller Antique 107"
+    "Weller Antique 107",
+    "Eagle Rare 10-Year"
   ],
   "all_available": [
     "Buffalo Trace Bourbon",
@@ -16,6 +17,7 @@
     "Blanton\u2019s Single Barrel",
     "E.H. Taylor Small Batch",
     "Weller Antique 107",
+    "Eagle Rare 10-Year",
     "Buffalo Trace Bourbon Cream",
     "Wheatley Vodka",
     "Century Vodka",
@@ -59,7 +61,7 @@
     },
     {
       "name": "Eagle Rare 10-Year",
-      "in_stock": false,
+      "in_stock": true,
       "category": "Rotating Offerings"
     },
     {
