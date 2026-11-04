@@ -1,39 +1,97 @@
 # 🥃 Buffalo Trace Bourbon Availability Tracker
 
-Automatically checks [Buffalo Trace Distillery Product Availability](https://www.buffalotracedistillery.com/visit-us/product-availability/) every morning via **GitHub Actions** and sends you an **instant mobile push notification (via ntfy.sh)** and/or **Email** when allocated bottles (**Blanton's**, **E.H. Taylor**, **Eagle Rare**, **Weller**) are in stock.
+Automatically checks [Buffalo Trace Distillery Product Availability](https://www.buffalotracedistillery.com/visit-us/product-availability/) during morning release hours via **GitHub Actions** and sends personalized **Email** and/or **ntfy.sh mobile push** alerts to each subscriber based on their individual bottle wishlist.
 
 ---
 
 ## How It Works
 
-1. **Zero external dependencies**: [`check_bourbon.py`](./check_bourbon.py) uses only Python's standard library, so GitHub Actions runs in ~2 seconds.
-2. **Dual-layer parser**: Extracts live `in_stock` status from Buffalo Trace's embedded Next.js data payload (`Daily Offerings`, `Rotating Offerings`, `Additional Offerings`) with an automatic HTML/SVG badge fallback.
-3. **Smart filtering**: Only sends an alert when at least one of your target allocated bourbons is marked **Available** (defaults to `E.H. Taylor, Blanton, Eagle Rare, Weller`).
-4. **Instant Mobile Push + Email**:
-   - **ntfy.sh Mobile Push (Recommended for AT&T & all carriers)**: 100% free iOS/Android push notifications with no signup or API key required. Anyone subscribed to your topic name gets an instant high-priority phone notification that opens the Buffalo Trace availability page when tapped.
-   - **Gmail HTML Email**: Sends a formatted availability table to one or more email addresses.
+1. **Zero external dependencies**: [`check_bourbon.py`](./check_bourbon.py) uses only Python's standard library.
+2. **Dual-layer parser**: Extracts live `in_stock` status from Buffalo Trace's embedded Next.js RSC data payload with an automatic HTML/SVG badge fallback.
+3. **Personalized Wishlists**: Each person in [`subscribers.json`](./subscribers.json) chooses exactly which bottles they want to watch. If only *Blanton's* is in stock, only subscribers who asked for *Blanton's* receive an alert—others are not spammed.
+4. **State-Based Deduplication**: Tracks state in [`last_state.json`](./last_state.json) so each subscriber only receives one confirmed alert per day, plus instant updates if a new bottle is added mid-morning.
+5. **Private Delivery**: All emails are sent individually to each recipient (no shared headers, no accidental "reply-all", completely private).
 
 ---
 
-## Quick Setup
+## Managing Subscribers & Bottle Wishlists
 
-### Option A: Instant Phone Alerts via `ntfy.sh` (30 Seconds, No Account Needed)
-1. Install the free **ntfy** app on your phone ([iOS App Store](https://apps.apple.com/us/app/ntfy/id1625396347) / [Google Play](https://play.google.com/store/apps/details?id=io.heckel.ntfy)).
-2. Open the app, tap **`+`**, and subscribe to a unique topic name of your choice (for example: `bt-bourbon-creason-8492`).
-   - *Tip: Friends or family who also want alerts can simply subscribe to the same topic name in their ntfy app!*
-3. In your GitHub repo (`Settings → Secrets and variables → Actions`), add a Secret or Variable named **`NTFY_TOPIC`** with that exact topic name (`bt-bourbon-creason-8492`).
+Subscriber preferences are managed in [`subscribers.json`](./subscribers.json). You can edit this file directly in GitHub or push changes from your local repository.
 
-### Option B: Email Alerts via Gmail
-1. Go to your Google Account's **[App Passwords page](https://myaccount.google.com/apppasswords)** (requires 2-Step Verification enabled).
-2. Create an app password named `Buffalo Trace Tracker` and copy the 16-character code.
-3. Add these Secrets or Variables in GitHub (`Settings → Secrets and variables → Actions`):
+### Example `subscribers.json`
+```json
+[
+  {
+    "name": "David Creason",
+    "email": "davidcreason@gmail.com",
+    "ntfy_topic": "bt-bourbon-creason-8492",
+    "bottles": [
+      "E.H. Taylor",
+      "Blanton's",
+      "Eagle Rare",
+      "Weller Antique 107"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "Alice (Only Blanton's & Eagle Rare)",
+    "email": "alice@example.com",
+    "ntfy_topic": "",
+    "bottles": [
+      "Blanton's",
+      "Eagle Rare"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "Bob (Any Rotating Offering)",
+    "email": "bob@example.com",
+    "bottles": [
+      "rotating"
+    ],
+    "enabled": true
+  }
+]
+```
 
-| Name | Value | Required? |
+### Supported Bottle Wishlist Keywords
+You can match specific bottles or broad categories (case-insensitive):
+
+| Wishlist Keyword | What It Matches |
+| :--- | :--- |
+| `"Blanton's"` or `"Blanton"` | *Blanton's Single Barrel*, *Blanton's Gold*, etc. |
+| `"Eagle Rare"` | *Eagle Rare 10-Year*, *Eagle Rare 17*, etc. |
+| `"E.H. Taylor"` or `"Taylor"` | *E.H. Taylor Small Batch*, *Single Barrel*, *Barrel Proof*, etc. |
+| `"Weller Antique 107"` | Specifically *Weller Antique 107* (excludes Special Reserve) |
+| `"Weller Special Reserve"` | Specifically *Weller Special Reserve* |
+| `"Weller"` | All Weller offerings (*Antique 107*, *Special Reserve*, *12-Year*, *Full Proof*) |
+| `"Stagg"` | *Stagg* / *George T. Stagg* |
+| `"rotating"` or `"allocated"` | Any bottle currently in the **Rotating Offerings** section |
+| `"all"` or `"*"` | Any available bottle in stock today |
+
+---
+
+## Required GitHub Secrets / Variables
+
+In GitHub (`Settings → Secrets and variables → Actions`), ensure you have:
+
+| Name | Type | Value |
 | :--- | :--- | :--- |
-| `NTFY_TOPIC` | Your ntfy.sh topic name (e.g. `bt-bourbon-creason-8492`) | Optional (Recommended for phone alerts) |
-| `GMAIL_USER` | Your Gmail address (e.g. `you@gmail.com`) | Required if using `NOTIFY_EMAIL` |
-| `GMAIL_APP_PASSWORD` | Your 16-character Gmail App Password | Required if using `NOTIFY_EMAIL` |
-| `NOTIFY_EMAIL` | Email address(es) to receive the full table (comma-separated) | Optional |
-| `TARGET_BOURBONS` | Custom comma-separated keywords (defaults to `E.H. Taylor, Blanton, Eagle Rare, Weller`) | Optional |
+| `GMAIL_USER` | Secret/Variable | Your sending Gmail address (e.g. `davidcreason@gmail.com`) |
+| `GMAIL_APP_PASSWORD` | Secret | Your 16-character [Google App Password](https://myaccount.google.com/apppasswords) |
 
-*(Note: AT&T permanently shut down `@txt.att.net` on June 17, 2025. Use `NTFY_TOPIC` for reliable mobile push alerts on AT&T and other carriers.)*
+*(Optional fallback: If `subscribers.json` is ever empty, the script automatically falls back to `NOTIFY_EMAIL`, `NOTIFY_SMS_GATEWAY`, and `NTFY_TOPIC` environment variables).*
+
+---
+
+## Scheduling via Webhook (No Cron Delays)
+
+Because GitHub Actions shared queues can delay native cron jobs during peak morning hours, the workflow accepts an external webhook trigger:
+
+* **Endpoint**: `POST https://api.github.com/repos/project-creason/buffalo-trace-tracker/dispatches`
+* **Headers**:
+  * `Accept: application/vnd.github+json`
+  * `Authorization: Bearer <GITHUB_PERSONAL_ACCESS_TOKEN>` *(Fine-grained token with `Contents: Read and write` permission)*
+  * `User-Agent: CronJobOrg`
+* **Body**: `{"event_type": "check_bourbon"}`
+* **Schedule**: Every 15 minutes between 7:00 AM and 11:30 AM Eastern Time (via cron-job.org).

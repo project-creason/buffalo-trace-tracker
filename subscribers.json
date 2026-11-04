@@ -1,0 +1,24 @@
+[
+  {
+    "name": "David Creason",
+    "email": "davidcreason@gmail.com",
+    "ntfy_topic": "bt-bourbon-creason-8492",
+    "bottles": [
+      "E.H. Taylor",
+      "Blanton's",
+      "Eagle Rare",
+      "Weller Antique 107"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "Sample Friend",
+    "email": "friend@example.com",
+    "ntfy_topic": "",
+    "bottles": [
+      "Blanton's",
+      "Eagle Rare"
+    ],
+    "enabled": false
+  }
+]
