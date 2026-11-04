@@ -272,12 +272,11 @@ def should_alert_subscriber(
     matched_names: list[str],
     subscriber_state: dict,
     now_et: datetime,
-    is_manual_run: bool,
     force_notify: bool,
 ) -> tuple[bool, str]:
     """
     Evaluate whether a specific subscriber should receive an alert in this run:
-      1. Always alert on manual run or --force-notify.
+      1. Always alert on --force-notify.
       2. If no target bottles are in stock, do not alert.
       3. If already alerted today: only alert if NEW matching bottles became available.
       4. If not alerted today:
@@ -286,8 +285,6 @@ def should_alert_subscriber(
     """
     if force_notify:
         return True, "Force notify enabled"
-    if is_manual_run:
-        return True, "Manual workflow dispatch"
 
     if not matched_names:
         return False, "No requested bottles are currently in stock"
@@ -524,7 +521,7 @@ def main() -> None:
     now_et = datetime.now(EASTERN_TZ)
     print(f"Current Eastern Time: {now_et.strftime('%A, %Y-%m-%d %I:%M:%S %p %Z')}")
 
-    is_manual_run = os.environ.get("GITHUB_EVENT_NAME") in ("workflow_dispatch", "repository_dispatch")
+    is_manual_run = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
     state = load_state(args.state_file)
     today_str = now_et.strftime("%Y-%m-%d")
     already_alerted_today = state.get("last_alert_date") == today_str
@@ -584,7 +581,6 @@ def main() -> None:
             matched_names=matched_names,
             subscriber_state=subscriber_state,
             now_et=now_et,
-            is_manual_run=is_manual_run,
             force_notify=args.force_notify,
         )
 
@@ -604,15 +600,16 @@ def main() -> None:
         if p["in_stock"] and matches_target(p["name"], DEFAULT_TARGETS, p.get("category", ""))
     ]
 
-    state["last_checked_et"] = now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z")
-    state["all_available"] = all_in_stock
-    state["available_targets"] = all_target_matches
-    state["products"] = products
-
+    products_changed = state.get("products") != products
     if not subscribers_to_alert:
         print("\nNo subscribers require alerts in this run.")
-        if not args.dry_run:
+        if not args.dry_run and products_changed:
+            state["last_checked_et"] = now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z")
+            state["all_available"] = all_in_stock
+            state["available_targets"] = all_target_matches
+            state["products"] = products
             save_state(args.state_file, state)
+            print(f"Updated product snapshot in {args.state_file}")
         return
 
     if args.dry_run:
@@ -682,6 +679,10 @@ def main() -> None:
                 pass
 
     # Update overall state
+    state["last_checked_et"] = now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z")
+    state["all_available"] = all_in_stock
+    state["available_targets"] = all_target_matches
+    state["products"] = products
     state["last_alert_date"] = today_str
     state["last_alert_timestamp_et"] = now_et.strftime("%Y-%m-%d %I:%M:%S %p %Z")
     state["subscriber_state"] = subscriber_state
