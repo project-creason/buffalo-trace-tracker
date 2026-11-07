@@ -1,7 +1,7 @@
 {
-  "last_checked_et": "2026-11-06 07:00:21 AM EST",
-  "last_alert_date": "2026-11-06",
-  "last_alert_timestamp_et": "2026-11-06 07:00:21 AM EST",
+  "last_checked_et": "2026-11-07 08:30:20 AM EST",
+  "last_alert_date": "2026-11-07",
+  "last_alert_timestamp_et": "2026-11-07 08:30:20 AM EST",
   "available_targets": [
     "Weller Special Reserve",
     "Blanton\u2019s Single Barrel",
@@ -85,8 +85,8 @@
   ],
   "subscriber_state": {
     "davidcreason@gmail.com": {
-      "last_alert_date": "2026-11-06",
-      "last_alert_timestamp_et": "2026-11-06 07:00:21 AM EST",
+      "last_alert_date": "2026-11-07",
+      "last_alert_timestamp_et": "2026-11-07 08:30:20 AM EST",
       "alerted_bottles": [
         "Blanton\u2019s Single Barrel",
         "E.H. Taylor Small Batch",
