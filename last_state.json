@@ -1,19 +1,19 @@
 {
-  "last_checked_et": "2026-11-10 07:30:19 AM EST",
-  "last_alert_date": "2026-11-08",
-  "last_alert_timestamp_et": "2026-11-08 08:30:18 AM EST",
+  "last_checked_et": "2026-11-11 07:30:20 AM EST",
+  "last_alert_date": "2026-11-11",
+  "last_alert_timestamp_et": "2026-11-11 07:30:20 AM EST",
   "available_targets": [
     "Weller Special Reserve",
-    "E.H. Taylor Small Batch",
-    "Weller Antique 107"
+    "Blanton\u2019s Single Barrel",
+    "Eagle Rare 10-Year"
   ],
   "all_available": [
     "Buffalo Trace Bourbon",
     "Traveller Whiskey",
     "Sazerac Rye Whiskey",
     "Weller Special Reserve",
-    "E.H. Taylor Small Batch",
-    "Weller Antique 107",
+    "Blanton\u2019s Single Barrel",
+    "Eagle Rare 10-Year",
     "Buffalo Trace Bourbon Cream",
     "Wheatley Vodka",
     "Century Vodka",
@@ -41,22 +41,22 @@
       "category": "Daily Offerings"
     },
     {
-      "name": "E.H. Taylor Small Batch",
+      "name": "Blanton\u2019s Single Barrel",
+      "in_stock": true,
+      "category": "Rotating Offerings"
+    },
+    {
+      "name": "Eagle Rare 10-Year",
       "in_stock": true,
       "category": "Rotating Offerings"
     },
     {
       "name": "Weller Antique 107",
-      "in_stock": true,
-      "category": "Rotating Offerings"
-    },
-    {
-      "name": "Blanton\u2019s Single Barrel",
       "in_stock": false,
       "category": "Rotating Offerings"
     },
     {
-      "name": "Eagle Rare 10-Year",
+      "name": "E.H. Taylor Small Batch",
       "in_stock": false,
       "category": "Rotating Offerings"
     },
@@ -83,12 +83,10 @@
   ],
   "subscriber_state": {
     "davidcreason@gmail.com": {
-      "last_alert_date": "2026-11-08",
-      "last_alert_timestamp_et": "2026-11-08 08:30:18 AM EST",
+      "last_alert_date": "2026-11-11",
+      "last_alert_timestamp_et": "2026-11-11 07:30:20 AM EST",
       "alerted_bottles": [
-        "Blanton\u2019s Single Barrel",
-        "E.H. Taylor Small Batch",
-        "Weller Antique 107"
+        "Eagle Rare 10-Year"
       ]
     }
   }
