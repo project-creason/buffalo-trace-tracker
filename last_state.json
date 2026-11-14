@@ -1,10 +1,11 @@
 {
-  "last_checked_et": "2026-11-13 07:15:16 AM EST",
+  "last_checked_et": "2026-11-14 07:30:18 AM EST",
   "last_alert_date": "2026-11-11",
   "last_alert_timestamp_et": "2026-11-11 07:30:20 AM EST",
   "available_targets": [
     "Weller Special Reserve",
     "Blanton\u2019s Single Barrel",
+    "Weller Antique 107",
     "E.H. Taylor Small Batch"
   ],
   "all_available": [
@@ -13,6 +14,7 @@
     "Sazerac Rye Whiskey",
     "Weller Special Reserve",
     "Blanton\u2019s Single Barrel",
+    "Weller Antique 107",
     "E.H. Taylor Small Batch",
     "Buffalo Trace Bourbon Cream",
     "Wheatley Vodka",
@@ -46,13 +48,13 @@
       "category": "Rotating Offerings"
     },
     {
-      "name": "E.H. Taylor Small Batch",
+      "name": "Weller Antique 107",
       "in_stock": true,
       "category": "Rotating Offerings"
     },
     {
-      "name": "Weller Antique 107",
-      "in_stock": false,
+      "name": "E.H. Taylor Small Batch",
+      "in_stock": true,
       "category": "Rotating Offerings"
     },
     {
